@@ -1,0 +1,76 @@
+1.Batch Processing ::
+
+-- Drop the table if it exists for demonstration purposes
+DROP TABLE IF EXISTS historical_users_bronze_ctas_rf;
+
+
+-- Create the UC table
+CREATE TABLE historical_users_bronze_ctas_rf 
+SELECT * 
+FROM read_files(
+        '/Volumes/dbacademy_ecommerce/v01/raw/users-historical',
+        format => 'parquet'
+      );
+
+
+-- Preview the UC table
+SELECT * 
+FROM historical_users_bronze_ctas_rf 
+LIMIT 10;
+
+DESCRIBE TABLE EXTENDED historical_users_bronze_ctas_rf;
+
+
+2. Incremental Processing  using COPY INTO ::
+
+-- Drop the table if it exists for demonstration purposes
+DROP TABLE IF EXISTS historical_users_bronze_ci_no_schema;
+
+
+-- Create an empty table without the specified schema
+CREATE TABLE historical_users_bronze_ci_no_schema;
+
+
+-- Use COPY INTO to populate UC table
+COPY INTO historical_users_bronze_ci_no_schema
+  FROM '/Volumes/dbacademy_ecommerce/v01/raw/users-historical'
+  FILEFORMAT = parquet
+  COPY_OPTIONS ('mergeSchema' = 'true');
+
+
+
+
+
+3. Streaming ::Auto Loader for streaming tables::
+
+-- YOU WILL HAVE TO REPLACE THE EXAMPLE PATH BELOW WITH THE PATH TO YOUR csv_file_autoloader_source VOLUME.
+-- You can find the volume in your navigation bar on the right and insert the path
+-- OR you can replace `your-labuser-name` with your specific user name (name of your schema)
+
+CREATE OR REFRESH STREAMING TABLE sql_csv_autoloader
+SCHEDULE EVERY 1 WEEK     -- Scheduling the refresh is optional
+AS
+SELECT *
+FROM STREAM read_files(
+  '/Volumes/ADD_YOUR_CATALOG_NAME/data_ingestion/csv_files_autoloader_source', -- Insert the path to you csv_files_autoloader_source volume (example shown)
+  format => 'CSV',
+  sep => '|',
+  header => true
+);
+
+
+SELECT *
+FROM sql_csv_autoloader;
+
+
+DESCRIBE TABLE EXTENDED sql_csv_autoloader
+
+--uploaded 001.csv file into volume and replace if its already exits
+
+REFRESH STREAMING TABLE sql_csv_autoloader;
+
+DESCRIBE HISTORY sql_csv_autoloader;
+
+SELECT * FROM sql_csv_autoloader;
+
+DROP TABLE IF EXISTS sql_csv_autoloader;
