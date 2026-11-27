@@ -1,0 +1,42 @@
+USING SQL
+
+-- Drop the table if it exists for demonstration purposes
+DROP TABLE IF EXISTS historical_users_bronze;
+
+
+-- Create an empty table
+CREATE TABLE historical_users_bronze AS
+SELECT
+  *,
+  cast(from_unixtime(user_first_touch_timestamp / 1000000) AS DATE) AS first_touch_date,
+  _metadata.file_modification_time AS file_modification_time,      -- Last data source file modification time
+  _metadata.file_name AS source_file,                              -- Ingest data source file name
+  current_timestamp() as ingestion_time                            -- Ingestion timestamp
+FROM read_files(
+  "/Volumes/dbacademy_ecommerce/v01/raw/users-historical",
+  format => 'parquet');
+
+
+-- View the final bronze table
+SELECT * 
+FROM historical_users_bronze
+LIMIT 10;
+
+
+USING PYTHON
+
+%python
+
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+df = spark.read.format("parquet").load("/Volumes/dbacademy_ecommerce/v01/raw/users-historical")
+
+df_with_metadata = (
+df.withColumn("first_touch_date",from_unixtime(col("user_first_touch_timestamp")/1000000).cast("date"))\
+                     .withColumn("file_modificaition_time",col("_metadata.file_modification_time"))\
+                     .withColumn("source_file",col("_metadata.file_name"))\
+                     .withColumn("ingestion_time",current_timestamp())
+                     )
+
+df_with_metadata.write.format("delta").mode("overwrite").saveAsTable("labuser13498589_1795786638.data_ingestion.historical_users_bronze_python_metadata")
