@@ -1,0 +1,56 @@
+Query to view the malformed columns from source 
+
+SELECT *
+FROM read_files(
+        '/Volumes/' || my_catalog || '/data_ingestion/landing_folder/csv_demo_files/malformed_example_1_data.csv',
+        format => "csv",
+        sep => "|",
+        header => true,
+        schema => '''
+            order_id INT, 
+            email STRING, 
+            transactions_timestamp BIGINT''', 
+        rescueddatacolumn => '_rescued_data'    -- Create the _rescued_data column
+      );
+
+
+-- Drop the table if it exists for demonstration purposes
+DROP TABLE IF EXISTS demo_4_example_2_bronze;
+
+-- Create UC table by ingesting CSV file
+CREATE OR REPLACE TABLE demo_4_example_2_bronze AS
+SELECT *
+FROM read_files(
+        '/Volumes/' || my_catalog || '/data_ingestion/landing_folder/csv_demo_files/malformed_example_2_data.csv',
+        format => "csv"
+        -- sep => "|",
+        -- header => true
+      );
+
+
+-- Display the table
+SELECT * FROM demo_4_example_2_bronze;
+
+--View the data from rescued json column
+
+SELECT
+  cast(_rescued_data:_c0 AS BIGINT) AS order_id,
+  *
+FROM read_files(
+        '/Volumes/' || my_catalog || '/data_ingestion/landing_folder/csv_demo_files/malformed_example_2_data.csv',
+        format => "csv",
+        sep => "|",
+        header => true
+      )
+
+
+
+
+SELECT * FROM read_files(
+    '/Volumes/'||my_catalog||'/data_ingestion/landing_folder/csv_demo_files/lab_malformed_data.csv',
+    format => 'csv',
+    header => true,
+    sep => ",",
+    schema => ''' item_id STRING, name STRING, price DOUBLE''',
+    rescueddatacolumn => '_rescued_data1'
+)
